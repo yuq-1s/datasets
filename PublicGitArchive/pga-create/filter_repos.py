@@ -2,6 +2,8 @@ import tqdm
 import csv
 import logging
 import fire
+from pathlib import Path
+import subprocess
 
 def filter_urls(filename, needed_language):
     with open(filename) as f:
@@ -31,7 +33,7 @@ def main(action: str,
     language: str = "C",
     projects_filename: str = 'dump/projects.csv',
     min_star: int = 1000):
-    assert action in ['language', 'star']
+    assert action in ['language', 'star', 'clone', 'move']
     repo_list_file = f'repos/repos_in_{language}.txt'
     if action == 'language':
         with open(repo_list_file, 'w') as f:
@@ -52,6 +54,20 @@ def main(action: str,
                     continue
                 if int(star_count[repo_id]) > min_star:
                     f.write(repo_id+'\n')
+    elif action == 'clone':
+        Path(f'repos/{language}').mkdir(exist_ok=True)
+        subprocess.run(f'xargs --replace -P10 git clone https://github.com/{{}}.git'
+                       f' repos/{language}/{{}} < repos/repos_in_{language}_{min_star}_stars.txt',
+                       shell=True)
+    elif action == 'move':
+        with open(f'repos/repos_in_{language}_{min_star}_stars.txt') as f:
+            for repo_id in f:
+                owner, repo = repo_id.strip().split('/')
+                Path(f'repos/{language}/{owner}').mkdir(exist_ok=True)
+                try:
+                    Path(f'repos/{repo}').rename(f'repos/{language}/{owner}/{repo}')
+                except FileNotFoundError:
+                    pass
     else:
         assert False
 
